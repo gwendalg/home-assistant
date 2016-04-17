@@ -1,0 +1,9 @@
+{
+  "domain": "anthem",
+  "name": "Anthem",
+  "documentation": "https://www.home-assistant.io/components/anthemav",
+  "requirements": [
+  ],
+  "dependencies": [],
+  "codeowners": []
+}
