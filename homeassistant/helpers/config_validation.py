@@ -7,7 +7,8 @@ import voluptuous as vol
 from homeassistant.loader import get_platform
 from homeassistant.const import (
     CONF_PLATFORM, CONF_SCAN_INTERVAL, TEMP_CELSIUS, TEMP_FAHRENHEIT,
-    CONF_ALIAS)
+    CONF_ALIAS, CONF_ENTITY_ID, CONF_VALUE_TEMPLATE, WEEKDAYS,
+    CONF_CONDITION)
 from homeassistant.helpers.entity import valid_entity_id
 import homeassistant.util.dt as dt_util
 from homeassistant.util import slugify
@@ -217,6 +218,16 @@ def template(value):
         raise vol.Invalid('invalid template ({})'.format(ex))
 
 
+def time(value):
+    """Validate time."""
+    time = dt_util.parse_time(value)
+
+    if time is None:
+        raise vol.Invalid('Invalid time specified: {}'.format(value))
+
+    return time
+
+
 def time_zone(value):
     """Validate timezone."""
     if dt_util.get_time_zone(value) is not None:
@@ -224,6 +235,8 @@ def time_zone(value):
     raise vol.Invalid(
         'Invalid time zone passed in. Valid options can be found here: '
         'http://en.wikipedia.org/wiki/List_of_tz_database_time_zones')
+
+weekdays = vol.All(ensure_list, [vol.In(WEEKDAYS)])
 
 
 # Validator helpers
@@ -261,8 +274,74 @@ SERVICE_SCHEMA = vol.All(vol.Schema({
     vol.Exclusive('service_template', 'service name'): template,
     vol.Optional('data'): dict,
     vol.Optional('data_template'): {match_all: template},
-    vol.Optional('entity_id'): entity_ids,
+    vol.Optional(CONF_ENTITY_ID): entity_ids,
 }), has_at_least_one_key('service', 'service_template'))
+
+NUMERIC_STATE_CONDITION_SCHEMA = vol.All(vol.Schema({
+    vol.Required(CONF_CONDITION): 'numeric_state',
+    vol.Required(CONF_ENTITY_ID): entity_id,
+    'below': vol.Coerce(float),
+    'above': vol.Coerce(float),
+    vol.Optional(CONF_VALUE_TEMPLATE): template,
+}), has_at_least_one_key('below', 'above'))
+
+STATE_CONDITION_SCHEMA = vol.Schema({
+    vol.Required(CONF_CONDITION): 'state',
+    vol.Required(CONF_ENTITY_ID): entity_id,
+    vol.Required('state'): str,
+    vol.Optional('for'): time_period,
+})
+
+SUN_CONDITION_SCHEMA = vol.All(vol.Schema({
+    vol.Required(CONF_CONDITION): 'sun',
+    vol.Optional('before'): vol.Any('sunset', 'sunrise'),
+    vol.Optional('before_offset'): time_period,
+    vol.Optional('after'): vol.Any('sunset', 'sunrise'),
+    vol.Optional('after_offset'): time_period,
+}), has_at_least_one_key('before', 'after'))
+
+TEMPLATE_CONDITION_SCHEMA = vol.Schema({
+    vol.Required(CONF_CONDITION): 'template',
+    vol.Required(CONF_VALUE_TEMPLATE): template,
+})
+
+TIME_CONDITION_SCHEMA = vol.All(vol.Schema({
+    vol.Required(CONF_CONDITION): 'time',
+    'before': time,
+    'after': time,
+    'weekday': weekdays,
+}), has_at_least_one_key('before', 'after', 'weekday'))
+
+ZONE_CONDITION_SCHEMA = vol.Schema({
+    vol.Required(CONF_CONDITION): 'zone',
+    vol.Required(CONF_ENTITY_ID): entity_id,
+    'zone': entity_id
+})
+
+AND_CONDITION_SCHEMA = vol.Schema({
+    vol.Required(CONF_CONDITION): 'and',
+    vol.Required('conditions'): vol.All(
+        ensure_list,
+        [lambda value: CONDITION_SCHEMA(value)],
+    )
+})
+
+OR_CONDITION_SCHEMA = vol.Schema({
+    vol.Required(CONF_CONDITION): 'or',
+    vol.Required('conditions'): vol.All(
+        ensure_list,
+        [lambda value: CONDITION_SCHEMA(value)],
+    )
+})
+
+CONDITION_SCHEMA = vol.Any(
+    NUMERIC_STATE_CONDITION_SCHEMA,
+    STATE_CONDITION_SCHEMA,
+    SUN_CONDITION_SCHEMA,
+    TEMPLATE_CONDITION_SCHEMA,
+    TIME_CONDITION_SCHEMA,
+    ZONE_CONDITION_SCHEMA,
+)
 
 _SCRIPT_DELAY_SCHEMA = vol.Schema({
     vol.Optional(CONF_ALIAS): string,
@@ -271,5 +350,6 @@ _SCRIPT_DELAY_SCHEMA = vol.Schema({
 
 SCRIPT_SCHEMA = vol.All(
     ensure_list,
-    [vol.Any(SERVICE_SCHEMA, _SCRIPT_DELAY_SCHEMA, EVENT_SCHEMA)],
+    [vol.Any(SERVICE_SCHEMA, _SCRIPT_DELAY_SCHEMA, EVENT_SCHEMA,
+             CONDITION_SCHEMA)],
 )
