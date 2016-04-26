@@ -1,0 +1,1 @@
+"""The espon-serial component."""
