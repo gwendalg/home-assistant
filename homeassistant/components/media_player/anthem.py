@@ -147,7 +147,7 @@ class AnthemDevice(MediaPlayerDevice):
         return self._muted
 
     @property
-    def supported_media_commands(self):
+    def supported_features(self):
         """Flag of media commands that are supported."""
         return SUPPORT_ANTHEM
 
