@@ -130,7 +130,7 @@ class EpsonDevice(MediaPlayerDevice):
         return self._pwstate
 
     @property
-    def supported_media_commands(self):
+    def supported_features(self):
         """Flag of media commands that are supported."""
         return SUPPORT_EPSON
 

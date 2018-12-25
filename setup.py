@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.6
 """Home Assistant setup script."""
 from datetime import datetime as dt
 from setuptools import setup, find_packages
