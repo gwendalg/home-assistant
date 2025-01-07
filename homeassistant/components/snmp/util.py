@@ -14,7 +14,7 @@ from pysnmp.hlapi.asyncio import (
     UdpTransportTarget,
     UsmUserData,
 )
-from pysnmp.hlapi.asyncio.cmdgen import lcd, vbProcessor
+from pysnmp.hlapi.v3arch.asyncio import lcd
 from pysnmp.smi.builder import MibBuilder
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
@@ -89,10 +89,7 @@ async def async_get_snmp_engine(hass: HomeAssistant) -> SnmpEngine:
 def _get_snmp_engine() -> SnmpEngine:
     """Return a cached instance of SnmpEngine."""
     engine = SnmpEngine()
-    mib_controller = vbProcessor.getMibViewController(engine)
-    # Actually load the MIBs from disk so we do
-    # not do it in the event loop
-    builder: MibBuilder = mib_controller.mibBuilder
+    builder : MibBuilder = engine.get_mib_builder()
     if "PYSNMP-MIB" not in builder.mibSymbols:
         builder.loadModules()
     return engine
